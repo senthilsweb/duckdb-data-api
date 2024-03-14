@@ -181,10 +181,35 @@ def get_entity(table_name: str, id: int = Path(..., description="The ID of the e
     result = db.execute(query, {"id": id}).fetchone()
     
     if result is None:
-        raise HTTPException(status_code=404, detail="Entity not found")
+        raise HTTPException(status_code=404, detail="Record not found")
 
     # Convert the RowProxy object to a dictionary
     result_dict = {key: value for key, value in result._mapping.items()}
 
     # Serialize using jsonable_encoder to handle datetime and other complex types
     return jsonable_encoder(result_dict)
+
+@app.delete("/{table_name}/{id}", response_model=Dict[str, Any])
+def delete_entity(table_name: str, id: int = Path(..., description="The ID of the entity to delete"), 
+                  db: Session = Depends(get_db)):
+    """
+    Deletes a single entity by its ID from a specified table.
+    """
+   # Validate table name
+    tables = list_tables(db)
+    if table_name not in tables:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # Check if the entity exists
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists = db.execute(exists_query, {"id": id}).scalar()
+    
+    if not exists:
+        raise HTTPException(status_code=404, detail="Record not found")
+
+    # Delete the entity
+    delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")
+    db.execute(delete_query, {"id": id})
+    db.commit()
+
+    return {"message": "Record deleted successfully"}
