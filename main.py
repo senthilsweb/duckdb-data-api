@@ -30,6 +30,14 @@ def get_db():
 
 SCHEMA_NAME = 'automation'
 
+@app.get("/")
+async def root():
+    return {"message": "Hello from FastAPI!"}
+
+@app.get("/health")
+async def root():
+    return {"message": "I am doing great!"}
+
 @app.get("/tables")
 def list_tables(db: Session = Depends(get_db)) -> List[str]:
     # Assuming DuckDB supports this or similar command to list tables
