@@ -9,7 +9,8 @@ Description: This FastAPI application serves as a data proxy to DuckDB, offering
              database interaction.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Query
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Path
+from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Dict, Any
@@ -18,6 +19,7 @@ from fastapi.responses import JSONResponse
 from datetime import datetime
 import os
 from dotenv import load_dotenv
+import math
 
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
 load_dotenv()
@@ -135,8 +137,9 @@ def read_table_data(table_name: str, request: Request, select: str = Query("*"),
     if order:
         base_query += f" ORDER BY {order}"
     base_query += " LIMIT :limit OFFSET :offset"
+    print(f"base_query = {base_query}")
     params.update({"limit": limit, "offset": skip})
-
+    print(f"params = {params}")
     # Execute query and handle results
     try:
         result_proxy = db.execute(text(base_query), params)
@@ -156,3 +159,32 @@ def read_table_data(table_name: str, request: Request, select: str = Query("*"),
         return JSONResponse(content=response_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/{table_name}/{id}", response_model=Dict[str, Any])
+def get_entity(table_name: str, id: int = Path(..., description="The ID of the entity to retrieve"), 
+               db: Session = Depends(get_db)):
+    """
+    Dynamically fetches a single entity by its ID from a specified table.
+    
+    Parameters:
+    - table_name: str - The name of the table from which to retrieve the entity.
+    - id: int - The unique identifier of the entity to retrieve.
+
+    Returns a single entity matching the given ID from the specified table, with datetime fields properly serialized.
+    """
+    # Validate table name
+    tables = list_tables(db)
+    if table_name not in tables:
+        raise HTTPException(status_code=404, detail="Table not found")
+    
+    query = text(f"SELECT * FROM {table_name} WHERE id = :id")
+    result = db.execute(query, {"id": id}).fetchone()
+    
+    if result is None:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    # Convert the RowProxy object to a dictionary
+    result_dict = {key: value for key, value in result._mapping.items()}
+
+    # Serialize using jsonable_encoder to handle datetime and other complex types
+    return jsonable_encoder(result_dict)
