@@ -42,25 +42,18 @@ DUCKDB_SCHEMA_NAME=
 
 ### Examples of `DUCKDB_DATABASE_URL` Configurations
 
-**Physical DuckDB Connection**:
-
-For connecting to a physical DuckDB file:
+Physical DuckDB file:
 
 ```env
 DUCKDB_DATABASE_URL=duckdb:///path/to/your/database.duckdb
 ```
-
-**In-memory DuckDB**:
-
-To utilize an in-memory DuckDB instance:
+In-memory DuckDB instance:
 
 ```env
 DUCKDB_DATABASE_URL=duckdb:///:memory:
 ```
 
-**Motherduck Connection**:
-
-For connecting to a DuckDB instance via Motherduck, you can use a token like so:
+Motherduck:
 
 ```env
 DUCKDB_DATABASE_URL=duckdb:///md:[motherduck-token]@[db-name]
