@@ -242,3 +242,34 @@ def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...),
 
     # Serialize using jsonable_encoder to handle datetime and other complex types
     return jsonable_encoder(result_dict)
+
+@app.patch("/{table_name}/{id}", response_model=Dict[str, Any])
+def update_entity(table_name: str, id: int, update_data: Dict[str, Any] = Body(...), 
+                  db: Session = Depends(get_db)):
+    """
+    Updates an existing entity in the specified table with the provided data.
+    """
+    # Validate table name
+    if table_name not in list_tables(db):
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # First, check if the entity exists
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists = db.execute(exists_query, {"id": id}).scalar()
+    if not exists:
+        raise HTTPException(status_code=404, detail="Entity not found")
+
+    # Constructing SQL UPDATE statement dynamically based on update_data
+    set_clauses = ', '.join([f"{key} = :{key}" for key in update_data.keys()])
+    update_query = text(f"UPDATE {table_name} SET {set_clauses} WHERE id = :id RETURNING *")
+    
+    # Execute the query and fetch the updated entity
+    result = db.execute(update_query, {**update_data, "id": id}).fetchone()
+    db.commit()
+    
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to update record [{id}] in [{table_name}]")
+
+    # Convert the result row to a dict to ensure compatibility with FastAPI's response_model
+    updated_entity = {column: value for column, value in result._mapping.items()}
+    return updated_entity
