@@ -116,10 +116,36 @@ The DuckDB Data Proxy supports a range of filter operators for querying data, al
 
 These operators can be used in query parameters to filter the data retrieved from the database. For example, `?name.like=%john%` would filter records where the `name` field contains "john".
 
+## Additional Endpoints
+
+In addition to the core RESTful routes, the DuckDB Data Proxy provides several utility endpoints for diagnostics, metadata, and system health checks:
+
+| Method | Route                  | Description                                        | Query Parameter Examples |
+|--------|------------------------|----------------------------------------------------|--------------------------|
+| GET    | `/`                    | Root endpoint returning a welcome message.        | N/A                      |
+| GET    | `/health`              | Health check endpoint.                             | N/A                      |
+| GET    | `/debug/connection`    | Tests database connection.                         | N/A                      |
+| GET    | `/metadata/tables`     | Lists all tables in the database.                 | N/A                      |
+
 ## Heads Up on Limitations
 
 - **Performance Considerations**: Because of the way we jump from the edge to MotherDuck and back, and how we fetch data, especially when counting items for pagination, there might be a slight delay.
 - **Primary Key Expectations**: Right now, we expect the primary key in your tables to be named "id". We know that’s not always the case, so we’re thinking of ways to work around this in future updates.
+
+## Technology Stack
+
+1. **FastAPI**:
+2. **DuckDB and MotherDuck**:
+3. **Python 3.9**:
+4. **SQLAlchemy**:
+
+## Architecture
+
+![DuckDB Data Proxy Architecture](/data-proxy-arch.png)
+
+## Deployment in Vercel
+
+Deploying your application to Vercel can significantly simplify the process, thanks to its support for serverless functions. For a detailed guide on deploying FastAPI applications to Vercel, check out this insightful [blog post](https://dev.to/mihaiandrei97/building-a-fastapi-application-and-deploying-it-with-vercel-ho7). It walks you through the steps to ensure your application runs smoothly in a serverless environment, making your DuckDB Data Proxy accessible from anywhere.
 
 
 ## From Goduck to DuckDB Data Proxy
@@ -137,16 +163,21 @@ While trying to deploy Goduck across various environments, including serverless 
 This journey from Goduck to developing a Python-based DuckDB Data Proxy emphasizes a shift towards accessibility, ease of use, and the desire to cater to a broader audience, fostering rapid development and deployment.
 
 
+## Miscellaneous 
 
+### Architecture Diagram - Mermaid code
 
+```mermaid
+flowchart LR
+    Client -->|REST API Call| FastAPI
+    FastAPI -->|SQLAlchemy ORM| DuckDB
+    DuckDB -->|Process Query| MotherDuck
+    MotherDuck -->|Return Results| DuckDB
+    DuckDB -->|ORM| FastAPI
+    FastAPI -->|JSON Response| Client
 
-
-
-
-
-
-
-
-
-
-
+    style FastAPI fill:#f9f,stroke:#333,stroke-width:2px
+    style DuckDB fill:#bbf,stroke:#333,stroke-width:2px
+    style MotherDuck fill:#fbf,stroke:#333,stroke-width:2px
+    style Client fill:#dfd,stroke:#333,stroke-width:2px
+```
