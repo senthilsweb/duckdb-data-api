@@ -9,7 +9,7 @@ Description: This FastAPI application serves as a data proxy to DuckDB, offering
              database interaction.
 """
 
-from fastapi import FastAPI, Depends, HTTPException, Request, Query, Path
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Path, Body
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
@@ -116,7 +116,7 @@ def prepare_where_clauses(request: Request):
     return " AND ".join(where_clauses), params
 
 @app.get("/{table_name}", response_model=List[Dict[str, Any]])
-def read_table_data(table_name: str, request: Request, select: str = Query("*"),
+def get_entities(table_name: str, request: Request, select: str = Query("*"),
                     order: str = Query(None), skip: int = Query(0, alias="offset"),
                     limit: int = Query(100), db: Session = Depends(get_db)):
     """
@@ -181,7 +181,7 @@ def get_entity(table_name: str, id: int = Path(..., description="The ID of the e
     result = db.execute(query, {"id": id}).fetchone()
     
     if result is None:
-        raise HTTPException(status_code=404, detail="Record not found")
+        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{table_name}]")
 
     # Convert the RowProxy object to a dictionary
     result_dict = {key: value for key, value in result._mapping.items()}
@@ -205,11 +205,40 @@ def delete_entity(table_name: str, id: int = Path(..., description="The ID of th
     exists = db.execute(exists_query, {"id": id}).scalar()
     
     if not exists:
-        raise HTTPException(status_code=404, detail="Record not found")
+        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{table_name}]")
 
     # Delete the entity
     delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")
     db.execute(delete_query, {"id": id})
     db.commit()
 
-    return {"message": "Record deleted successfully"}
+    return {"message": f"Record [{id}] deleted successfully from [{table_name}]"}
+
+@app.post("/{table_name}", response_model=Dict[str, Any])
+def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...), 
+                  db: Session = Depends(get_db)):
+    """
+    Creates a new entity in the specified table with the provided data.
+    """
+    # Validate table name
+    tables = list_tables(db)
+    if table_name not in tables:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # Constructing SQL INSERT statement dynamically based on entity_data
+    columns = ', '.join(entity_data.keys())
+    values = ', '.join([f":{key}" for key in entity_data.keys()])
+    insert_query = text(f"INSERT INTO {table_name} ({columns}) VALUES ({values}) RETURNING *")
+    
+    # Execute the query and fetch the newly created entity
+    result = db.execute(insert_query, entity_data).fetchone()
+    db.commit()
+    
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to create record")
+    
+    # Convert the RowProxy object to a dictionary
+    result_dict = {key: value for key, value in result._mapping.items()}
+
+    # Serialize using jsonable_encoder to handle datetime and other complex types
+    return jsonable_encoder(result_dict)
