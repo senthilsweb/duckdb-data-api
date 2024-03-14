@@ -26,31 +26,32 @@ The DuckDB Data Proxy project simplifies working with DuckDB and MotherDuck thro
 ### Python Environment Setup
 
 1. **Create a Virtual Environment**: 
+
    ```bash
    python3 -m venv env
-   ```
-2. **Activate the Virtual Environment**: 
-   ```bash
    source env/bin/activate
-   ```
-3. **Install Dependencies**: 
-   ```bash
    pip install -r requirements.txt
    ```
-### Environment Configuration
-
-To configure the DuckDB Data Proxy for your projects, following environment variables are crucial. These variables should be defined in a `.env` file located at the root of your project. Here's how to configure them effectively:
-
-Create a `.env` file at the root of your project and include the following lines:
+2. Create a `.env` file at the root of your project and include the following lines:
 
 ```env
 # .env file
 DUCKDB_DATABASE_URL=
 DUCKDB_SCHEMA_NAME=
 ```
-
 - `DUCKDB_DATABASE_URL`: This variable specifies the connection URL to your DuckDB database, Motherduck instance, or an in-memory database.
 - `DUCKDB_SCHEMA_NAME`: This variable defines the schema name for the operations conducted via the data proxy. If left blank, it defaults to considering all available schemas.
+
+3. **Install Packages**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Run the project**:
+
+   ```bash
+   uvicorn main:app --reload
+   ```
 
 ### Examples of `DUCKDB_DATABASE_URL` Configurations
 
@@ -70,16 +71,6 @@ Motherduck:
 ```env
 DUCKDB_DATABASE_URL=duckdb:///md:[motherduck-token]@[db-name]
 ```
-5. **Run the Project**:
-
-   ```bash
-   uvicorn main:app --reload
-   ```
-
-6. **Freeze Installed Packages** (for sharing or deployment): 
-   ```bash
-   pip freeze > requirements.txt
-   ```
 
 ## RESTful Routes and Actions
 
@@ -141,7 +132,20 @@ In addition to the core RESTful routes, the DuckDB Data Proxy provides several u
 
 ## Architecture
 
-![DuckDB Data Proxy Architecture](/data-proxy-arch.png)
+```mermaid
+flowchart LR
+    Client -->|REST API Call| FastAPI
+    FastAPI -->|SQLAlchemy ORM| DuckDB
+    DuckDB -->|Process Query| MotherDuck
+    MotherDuck -->|Return Results| DuckDB
+    DuckDB -->|ORM| FastAPI
+    FastAPI -->|JSON Response| Client
+
+    style FastAPI fill:#f9f,stroke:#333,stroke-width:2px
+    style DuckDB fill:#bbf,stroke:#333,stroke-width:2px
+    style MotherDuck fill:#fbf,stroke:#333,stroke-width:2px
+    style Client fill:#dfd,stroke:#333,stroke-width:2px
+```
 
 ## Deployment in Vercel
 
@@ -161,23 +165,3 @@ While trying to deploy Goduck across various environments, including serverless 
 - **Inspiration from MongoDB**: MongoDB's Atlas Data Proxy, which simplifies database operations, inspired me to offer a similar experience for DuckDB users, facilitating quick backend setups for rapid prototyping.
 
 This journey from Goduck to developing a Python-based DuckDB Data Proxy emphasizes a shift towards accessibility, ease of use, and the desire to cater to a broader audience, fostering rapid development and deployment.
-
-
-## Miscellaneous 
-
-### Architecture Diagram - Mermaid code
-
-```mermaid
-flowchart LR
-    Client -->|REST API Call| FastAPI
-    FastAPI -->|SQLAlchemy ORM| DuckDB
-    DuckDB -->|Process Query| MotherDuck
-    MotherDuck -->|Return Results| DuckDB
-    DuckDB -->|ORM| FastAPI
-    FastAPI -->|JSON Response| Client
-
-    style FastAPI fill:#f9f,stroke:#333,stroke-width:2px
-    style DuckDB fill:#bbf,stroke:#333,stroke-width:2px
-    style MotherDuck fill:#fbf,stroke:#333,stroke-width:2px
-    style Client fill:#dfd,stroke:#333,stroke-width:2px
-```
