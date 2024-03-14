@@ -38,6 +38,20 @@ async def root():
 async def root():
     return {"message": "I am doing great!"}
 
+@app.get("/debug/connection")
+def debug_connection(db: Session = Depends(get_db)):
+    try:
+        # Attempt a simple query to test the connection
+        # This query can be anything that is guaranteed to succeed in your DB environment
+        print(f"Checking DuckDB Connection")
+        result = db.execute(text("SELECT 1"))
+        print(f"Checked DuckDB Connection")
+        # If the query succeeds, return a success message
+        return {"status": "success", "message": "Database connection established successfully."}
+    except Exception as e:
+        # If an error occurs, return an error message and details
+        return {"status": "error", "message": str(e)}
+    
 @app.get("/tables")
 def list_tables(db: Session = Depends(get_db)) -> List[str]:
     # Assuming DuckDB supports this or similar command to list tables
