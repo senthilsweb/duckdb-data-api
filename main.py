@@ -12,7 +12,9 @@ from dotenv import load_dotenv  # Import the load_dotenv function
 
 # Load environment variables from .env file
 load_dotenv()
-DATABASE_URL =  os.getenv("DUCKDB_DATABASE_URL", default="duckdb:////path to your db/templrjs.duckdb")
+
+DATABASE_URL = f"duckdb:///md:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uIjoic2VudGhpbC5rYXJ1cHBhaWFoLmhpdGFjaGl2YW50YXJhLmNvbSIsImVtYWlsIjoic2VudGhpbC5rYXJ1cHBhaWFoQGhpdGFjaGl2YW50YXJhLmNvbSIsInVzZXJJZCI6ImExMWM3ZGQ1LWI0MDQtNGZmMi05MWNlLWQwOWZjZjJjNjFlMSIsImlhdCI6MTcwOTMyMTU3OSwiZXhwIjoxNzQwODc5MTc5fQ.yndoJ4nGA5PgCVB_2aveJSeJ0ByOotkH6RttRhgoK1w@my_db"
+
 print(f"DATABASE_URL = {DATABASE_URL}")
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

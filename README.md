@@ -2,7 +2,7 @@
 Data Proxy and micro orm for DuckDB and MotherDuck
 
 
-## Python Environment Setup (replace `env` with your desired environment name):
+## Python Environment Setup:
 
 1. Create a virtual environment: `python3 -m venv env`
 2. Activate the virtual environment: `source env/bin/activate`
