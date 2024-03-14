@@ -14,7 +14,7 @@ from dotenv import load_dotenv  # Import the load_dotenv function
 load_dotenv()
 os.environ['DUCKDB_HOME_DIRECTORY'] = '/tmp/duckdb_home'
 os.environ['HOME_DIRECTORY'] = '/tmp/duckdb_home'
-os.environ['HOMEY'] = '/tmp'
+os.environ['HOME'] = '/tmp'
 
 DATABASE_URL = f"duckdb:///md:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uIjoic2VudGhpbC5rYXJ1cHBhaWFoLmhpdGFjaGl2YW50YXJhLmNvbSIsImVtYWlsIjoic2VudGhpbC5rYXJ1cHBhaWFoQGhpdGFjaGl2YW50YXJhLmNvbSIsInVzZXJJZCI6ImExMWM3ZGQ1LWI0MDQtNGZmMi05MWNlLWQwOWZjZjJjNjFlMSIsImlhdCI6MTcwOTMyMTU3OSwiZXhwIjoxNzQwODc5MTc5fQ.yndoJ4nGA5PgCVB_2aveJSeJ0ByOotkH6RttRhgoK1w@my_db"
 
