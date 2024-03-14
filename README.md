@@ -122,7 +122,19 @@ These operators can be used in query parameters to filter the data retrieved fro
 - **Primary Key Expectations**: Right now, we expect the primary key in your tables to be named "id". We know that’s not always the case, so we’re thinking of ways to work around this in future updates.
 
 
+## From Goduck to DuckDB Data Proxy
 
+### Transitioning from Golang to Python
+Before diving into this Python project, I launched [Goduck](https://github.com/senthilsweb/goduck), a similar initiative built with Golang. It aimed to provide REST API interaction with DuckDB and MotherDuck, much like what we're doing here but in the Go ecosystem.
+
+### Shifting Gears to Python
+While trying to deploy Goduck across various environments, including serverless platforms, I faced hurdles due to the C-go dependency of the Go duckDB driver, which made the build process tricky for different Linux systems. This challenge highlighted the benefits of Python's straightforwardness and the extensive support from its community. Here are the main insights:
+
+- **Simpler Python Driver**: Python's approach to DuckDB felt more straightforward and developer-friendly.
+- **Larger Python Community**: The vast Python community meant more potential users and contributors for this project.
+- **Inspiration from MongoDB**: MongoDB's Atlas Data Proxy, which simplifies database operations, inspired me to offer a similar experience for DuckDB users, facilitating quick backend setups for rapid prototyping.
+
+This journey from Goduck to developing a Python-based DuckDB Data Proxy emphasizes a shift towards accessibility, ease of use, and the desire to cater to a broader audience, fostering rapid development and deployment.
 
 
 

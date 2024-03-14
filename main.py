@@ -1,6 +1,6 @@
 """
 File Name: main.py
-Author: Sernthilnathan Karuppaiah
+Author(s): Sernthilnathan Karuppaiah and ChatGPT4 :-)
 Date: 14-Mar-2024
 Description: This FastAPI application serves as a data proxy to DuckDB, offering endpoints for basic database
              operations such as listing tables, reading table data with optional filtering, sorting, and pagination,
