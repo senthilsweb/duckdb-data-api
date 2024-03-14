@@ -125,8 +125,7 @@ def get_entities(table_name: str, request: Request, select: str = Query("*"),
     Validates table name against existing tables to prevent SQL injection.
     """
     # Validate table name
-    tables = list_tables(db)
-    if table_name not in tables:
+    if table_name not in list_tables(db):
         raise HTTPException(status_code=404, detail="Table not found")
     
     # Construct query with optional WHERE, ORDER BY, and pagination
@@ -173,8 +172,7 @@ def get_entity(table_name: str, id: int = Path(..., description="The ID of the e
     Returns a single entity matching the given ID from the specified table, with datetime fields properly serialized.
     """
     # Validate table name
-    tables = list_tables(db)
-    if table_name not in tables:
+    if table_name not in list_tables(db):
         raise HTTPException(status_code=404, detail="Table not found")
     
     query = text(f"SELECT * FROM {table_name} WHERE id = :id")
@@ -196,10 +194,9 @@ def delete_entity(table_name: str, id: int = Path(..., description="The ID of th
     Deletes a single entity by its ID from a specified table.
     """
    # Validate table name
-    tables = list_tables(db)
-    if table_name not in tables:
+    if table_name not in list_tables(db):
         raise HTTPException(status_code=404, detail="Table not found")
-
+    
     # Check if the entity exists
     exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
     exists = db.execute(exists_query, {"id": id}).scalar()
@@ -221,8 +218,7 @@ def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...),
     Creates a new entity in the specified table with the provided data.
     """
     # Validate table name
-    tables = list_tables(db)
-    if table_name not in tables:
+    if table_name not in list_tables(db):
         raise HTTPException(status_code=404, detail="Table not found")
 
     # Constructing SQL INSERT statement dynamically based on entity_data
@@ -273,3 +269,31 @@ def update_entity(table_name: str, id: int, update_data: Dict[str, Any] = Body(.
     # Convert the result row to a dict to ensure compatibility with FastAPI's response_model
     updated_entity = {column: value for column, value in result._mapping.items()}
     return updated_entity
+
+@app.put("/{table_name}/{id}", response_model=Dict[str, Any])
+def replace_entity(table_name: str, id: int, new_data: Dict[str, Any] = Body(...), 
+                   db: Session = Depends(get_db)):
+  
+    if table_name not in list_tables(db):
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # First, check if the entity exists
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists = db.execute(exists_query, {"id": id}).scalar()
+    if not exists:
+        raise HTTPException(status_code=404, detail="Table not found")
+
+    # Assuming all fields must be provided for a PUT operation, construct a dynamic UPDATE statement
+    set_clauses = ', '.join([f"{key} = :{key}" for key in new_data.keys()])
+    update_query = text(f"UPDATE {table_name} SET {set_clauses} WHERE id = :id RETURNING *")
+    
+    # Execute the query and fetch the updated entity
+    result = db.execute(update_query, {**new_data, "id": id}).fetchone()
+    db.commit()
+    
+    if result is None:
+        raise HTTPException(status_code=500, detail="Failed to replace record [{id}] in [{table_name}]")
+
+    # Convert the result row to a dict to ensure compatibility with FastAPI's response_model
+    replaced_entity = {column: value for column, value in result._mapping.items()}
+    return replaced_entity
