@@ -36,7 +36,7 @@ The DuckDB Data Proxy project simplifies working with DuckDB and MotherDuck thro
 
 ```env
 # .env file
-DUCKDB_DATABASE_URL=
+DUCKDB_DATABASE_URL=duckdb:///tickit.duckdb
 DUCKDB_SCHEMA_NAME=
 ```
 - `DUCKDB_DATABASE_URL`: This variable specifies the connection URL to your DuckDB database, Motherduck instance, or an in-memory database.
