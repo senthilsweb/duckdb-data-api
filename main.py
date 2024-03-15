@@ -133,6 +133,11 @@ def get_entities(table_name: str, request: Request, select: str = Query("*"),
     where_clauses, params = prepare_where_clauses(request)
     if where_clauses:
         base_query += f" WHERE {where_clauses}"
+        count_query = f"SELECT COUNT(*) FROM {table_name} WHERE {where_clauses}"
+    else:
+        count_query = f"SELECT COUNT(*) FROM {table_name}"
+
+
     if order:
         base_query += f" ORDER BY {order}"
     base_query += " LIMIT :limit OFFSET :offset"
@@ -143,7 +148,8 @@ def get_entities(table_name: str, request: Request, select: str = Query("*"),
     try:
         result_proxy = db.execute(text(base_query), params)
         results = result_proxy.fetchall()
-        total_count = db.execute(text(f"SELECT COUNT(*) FROM {table_name}")).scalar()
+        # Use params for count query as well to respect WHERE conditions
+        total_count = db.execute(text(count_query), params).scalar()
         page_number = math.ceil(skip / limit) + 1
         total_pages = math.ceil(total_count / limit)
         response_data = {
