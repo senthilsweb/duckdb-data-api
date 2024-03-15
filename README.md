@@ -1,10 +1,10 @@
-# DuckDB Data Proxy and Micro ORM
+# DuckDB Data API and Micro ORM
 
-## Introduction
+Ever wondered if MotherDuck offers a REST API? This project steps in to bridge that gap, enabling you to interact with DuckDB databases through a RESTful interface without writing a single line of backend code. Designed for deployment at the edge, it's a cost-effective solution for hobbyists and small projects.
 
-The DuckDB Data Proxy project simplifies working with DuckDB and MotherDuck through an easy-to-use RESTful interface. It's designed to make database interactions straightforward for your projects.
+The DuckDB Data API facilitates direct access to your DuckDB database, allowing for CRUD operations via HTTP.
 
-## Motivation/Why I Made This
+## Motivation
 
 - **Simplicity and Rapid Prototyping**: Offers a dynamic, RESTful interface to cater to various project requirements with minimal or no coding.
 - **Adaptation to Serverless and Edge Computing**: Aims to provide a fitting database solution for applications operating at the internet's edge.
