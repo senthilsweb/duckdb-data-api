@@ -69,14 +69,16 @@ def debug_connection(db: Session = Depends(get_db)):
 @app.get("/metadata/tables")
 def list_tables(db: Session = Depends(get_db)) -> List[str]:
     """
-    Endpoint to list all tables in the database.
-    
-    Optionally uses a specified schema if provided.
+    Endpoint to list all tables in the database for specified schemas.
     """
     if SCHEMA_NAME:
-        db.execute(text(f"USE {SCHEMA_NAME}"))  # Work within a given Schema
-    result = db.execute(text("SHOW TABLES"))
-    tables = [row[0] for row in result]  # The first column in each row contains the table name
+        query = f"SELECT table_name FROM information_schema.tables WHERE table_schema IN ('{SCHEMA_NAME}')"
+    else:
+        # If no schema names are provided, query tables without filtering by schema
+        query = "SELECT table_name FROM information_schema.tables"
+    print(f"query = [{query}]")
+    result = db.execute(text(query))
+    tables = [row[0] for row in result]
     return tables
 
 def prepare_where_clauses(request: Request):
@@ -129,14 +131,14 @@ def get_entities(table_name: str, request: Request, select: str = Query("*"),
         raise HTTPException(status_code=404, detail="Table not found")
     
     # Construct query with optional WHERE, ORDER BY, and pagination
-    base_query = f"SELECT {select} FROM {table_name}"
+    base_query = f"SELECT {select} FROM  {SCHEMA_NAME}.{table_name}"
     where_clauses, params = prepare_where_clauses(request)
     if where_clauses:
         base_query += f" WHERE {where_clauses}"
-        count_query = f"SELECT COUNT(*) FROM {table_name} WHERE {where_clauses}"
+        count_query = f"SELECT COUNT(*) FROM {SCHEMA_NAME}.{table_name} WHERE {where_clauses}"
+            
     else:
-        count_query = f"SELECT COUNT(*) FROM {table_name}"
-
+        count_query = f"SELECT COUNT(*) FROM {SCHEMA_NAME}.{table_name}"
 
     if order:
         base_query += f" ORDER BY {order}"
@@ -181,11 +183,11 @@ def get_entity(table_name: str, id: int = Path(..., description="The ID of the e
     if table_name not in list_tables(db):
         raise HTTPException(status_code=404, detail="Table not found")
     
-    query = text(f"SELECT * FROM {table_name} WHERE id = :id")
+    query = text(f"SELECT * FROM {SCHEMA_NAME}.{table_name} WHERE id = :id")
     result = db.execute(query, {"id": id}).fetchone()
     
     if result is None:
-        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{table_name}]")
+        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{SCHEMA_NAME}.{table_name}]")
 
     # Convert the RowProxy object to a dictionary
     result_dict = {key: value for key, value in result._mapping.items()}
@@ -204,18 +206,18 @@ def delete_entity(table_name: str, id: int = Path(..., description="The ID of th
         raise HTTPException(status_code=404, detail="Table not found")
     
     # Check if the entity exists
-    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {SCHEMA_NAME}.{table_name} WHERE id = :id)")
     exists = db.execute(exists_query, {"id": id}).scalar()
     
     if not exists:
-        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{table_name}]")
+        raise HTTPException(status_code=404, detail=f"Record [{id}] not found in [{SCHEMA_NAME}.{table_name}]")
 
     # Delete the entity
-    delete_query = text(f"DELETE FROM {table_name} WHERE id = :id")
+    delete_query = text(f"DELETE FROM {SCHEMA_NAME}.{table_name} WHERE id = :id")
     db.execute(delete_query, {"id": id})
     db.commit()
 
-    return {"message": f"Record [{id}] deleted successfully from [{table_name}]"}
+    return {"message": f"Record [{id}] deleted successfully from [{SCHEMA_NAME}.{table_name}]"}
 
 @app.post("/{table_name}", response_model=Dict[str, Any])
 def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...), 
@@ -230,7 +232,7 @@ def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...),
     # Constructing SQL INSERT statement dynamically based on entity_data
     columns = ', '.join(entity_data.keys())
     values = ', '.join([f":{key}" for key in entity_data.keys()])
-    insert_query = text(f"INSERT INTO {table_name} ({columns}) VALUES ({values}) RETURNING *")
+    insert_query = text(f"INSERT INTO {SCHEMA_NAME}.{table_name} ({columns}) VALUES ({values}) RETURNING *")
     
     # Execute the query and fetch the newly created entity
     result = db.execute(insert_query, entity_data).fetchone()
@@ -256,14 +258,14 @@ def update_entity(table_name: str, id: int, update_data: Dict[str, Any] = Body(.
         raise HTTPException(status_code=404, detail="Table not found")
 
     # First, check if the entity exists
-    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {SCHEMA_NAME}.{table_name} WHERE id = :id)")
     exists = db.execute(exists_query, {"id": id}).scalar()
     if not exists:
         raise HTTPException(status_code=404, detail="Entity not found")
 
     # Constructing SQL UPDATE statement dynamically based on update_data
     set_clauses = ', '.join([f"{key} = :{key}" for key in update_data.keys()])
-    update_query = text(f"UPDATE {table_name} SET {set_clauses} WHERE id = :id RETURNING *")
+    update_query = text(f"UPDATE {SCHEMA_NAME}.{table_name} SET {set_clauses} WHERE id = :id RETURNING *")
     
     # Execute the query and fetch the updated entity
     result = db.execute(update_query, {**update_data, "id": id}).fetchone()
@@ -284,14 +286,14 @@ def replace_entity(table_name: str, id: int, new_data: Dict[str, Any] = Body(...
         raise HTTPException(status_code=404, detail="Table not found")
 
     # First, check if the entity exists
-    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {table_name} WHERE id = :id)")
+    exists_query = text(f"SELECT EXISTS(SELECT 1 FROM {SCHEMA_NAME}.{table_name} WHERE id = :id)")
     exists = db.execute(exists_query, {"id": id}).scalar()
     if not exists:
         raise HTTPException(status_code=404, detail="Table not found")
 
     # Assuming all fields must be provided for a PUT operation, construct a dynamic UPDATE statement
     set_clauses = ', '.join([f"{key} = :{key}" for key in new_data.keys()])
-    update_query = text(f"UPDATE {table_name} SET {set_clauses} WHERE id = :id RETURNING *")
+    update_query = text(f"UPDATE {SCHEMA_NAME}.{table_name} SET {set_clauses} WHERE id = :id RETURNING *")
     
     # Execute the query and fetch the updated entity
     result = db.execute(update_query, {**new_data, "id": id}).fetchone()
