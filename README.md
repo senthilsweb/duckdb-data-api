@@ -177,5 +177,3 @@ While trying to deploy Goduck across various environments, including serverless 
 - **Simpler Python Driver**: Python's approach to DuckDB felt more straightforward and developer-friendly.
 - **Larger Python Community**: The vast Python community meant more potential users and contributors for this project.
 - **Inspiration from MongoDB**: MongoDB's Atlas Data Proxy, which simplifies database operations, inspired me to offer a similar experience for DuckDB users, facilitating quick backend setups for rapid prototyping.
-
-This journey from Goduck to developing a Python-based DuckDB Data Proxy emphasizes a shift towards accessibility, ease of use, and the desire to cater to a broader audience, fostering rapid development and deployment.
