@@ -26,7 +26,7 @@ load_dotenv()
 os.environ['HOME'] = '/tmp'
 
 # Configuration variables
-DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///..path..to..your..local..duckdb")
+DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")
 SCHEMA_NAME = os.getenv("DUCKDB_SCHEMA_NAME", default="")
 
 # Database engine setup
