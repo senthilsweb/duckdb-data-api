@@ -37,11 +37,11 @@ The DuckDB Data API facilitates direct access to your DuckDB database, allowing 
 ```env
 # .env file
 DUCKDB_DATABASE_URL=duckdb:///tickit.duckdb
-DUCKDB_SCHEMA_NAME=
+DUCKDB_SCHEMA_NAME=main
 ```
 - `DUCKDB_DATABASE_URL`: This variable specifies the connection URL to your DuckDB database, Motherduck instance, or an in-memory database.
-- `DUCKDB_SCHEMA_NAME`: This variable defines the schema name for the operations conducted via the data proxy. If left blank, it defaults to considering all available schemas.
-
+- `DUCKDB_SCHEMA_NAME`: This variable defines the schema name for the operations conducted via the data proxy. The default schema is "main"
+ 
 3. **Install Packages**
    ```bash
    pip install -r requirements.txt
