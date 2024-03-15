@@ -28,6 +28,8 @@ os.environ['HOME'] = '/tmp'
 # Configuration variables
 DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")
 SCHEMA_NAME = os.getenv("DUCKDB_SCHEMA_NAME", default="main")
+BLACKLIST_KEYWORDS = [keyword for keyword in os.getenv("QUERY_BLACKLIST", "").split(",") if keyword]
+
 
 # Database engine setup
 engine = create_engine(DATABASE_URL)
@@ -305,3 +307,57 @@ def replace_entity(table_name: str, id: int, new_data: Dict[str, Any] = Body(...
     # Convert the result row to a dict to ensure compatibility with FastAPI's response_model
     replaced_entity = {column: value for column, value in result._mapping.items()}
     return replaced_entity
+
+def is_query_blacklisted(query: str) -> bool:
+    # Check if BLACKLIST_KEYWORDS is actually empty or contains only an empty string
+    if not BLACKLIST_KEYWORDS or BLACKLIST_KEYWORDS == ['']:
+        return False
+
+    query_lower = query.lower()
+    for keyword in BLACKLIST_KEYWORDS:
+        # Skip empty strings which might be a result of splitting an empty environment variable
+        if keyword and keyword in query_lower:
+            return True
+    return False
+
+@app.post("/execute/sql")
+def execute_custom_query(query: str = Body(..., embed=True), db: Session = Depends(get_db)):
+    """
+    Executes a custom SQL query, which can be a SELECT statement or a DDL statement.
+    Checks against a blacklist for prohibited keywords.
+
+    Parameters:
+    - query: str - The SQL query to execute.
+
+    If the query is a SELECT statement, returns the fetched data.
+    For DDL statements, returns a confirmation message.
+    """
+    query = query.strip().lower()
+    if is_query_blacklisted(query):
+        raise HTTPException(status_code=403, detail="The query contains prohibited keywords.")
+
+    if query.startswith("select"):
+        # It's a select query
+        return execute_select_query(query, db)
+    else:
+        # It's a DDL query
+        return execute_ddl_query(query, db)
+
+def execute_select_query(query: str, db: Session):
+    try:
+        result_proxy = db.execute(text(query))
+        results = result_proxy.mappings().all()  # Convert to list of dictionaries
+        # Serialize the results using jsonable_encoder to handle special data types like datetime
+        json_compatible_data = jsonable_encoder(results)
+        return JSONResponse(content={"data": json_compatible_data, "total_rows": len(results)})
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+def execute_ddl_query(query: str, db: Session):
+    try:
+        db.execute(text(query))
+        db.commit()  # Make sure to commit the transaction for DDL operations
+        return JSONResponse(content={"message": "Query executed successfully"})
+    except Exception as e:
+        db.rollback()  # Rollback the transaction in case of failure
+        raise HTTPException(status_code=400, detail=str(e))

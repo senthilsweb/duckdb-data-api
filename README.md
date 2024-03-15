@@ -32,16 +32,20 @@ The DuckDB Data API facilitates direct access to your DuckDB database, allowing 
    source env/bin/activate
    pip install -r requirements.txt
    ```
-2. Create a `.env` file at the root of your project and include the following lines:
+
+2. Create a `.env` file at the root of your project to configure the environment settings:
 
 ```env
 # .env file
 DUCKDB_DATABASE_URL=duckdb:///tickit.duckdb
 DUCKDB_SCHEMA_NAME=main
+QUERY_BLACKLIST=DELETE,DROP,TRUNCATE,ALTER
 ```
-- `DUCKDB_DATABASE_URL`: This variable specifies the connection URL to your DuckDB database, Motherduck instance, or an in-memory database.
-- `DUCKDB_SCHEMA_NAME`: This variable defines the schema name for the operations conducted via the data proxy. The default schema is "main"
- 
+
+- `DUCKDB_DATABASE_URL`: Specifies the connection URL to your local DuckDB database file or to a Motherduck connectionstring. Alternatively, you can set this to `:memory:` to use an in-memory database.
+- `DUCKDB_SCHEMA_NAME`: Sets the default schema for database operations within the data api. If left unset, it defaults to the "main" schema.
+- `QUERY_BLACKLIST`: Defines a comma-separated list of SQL keywords that the data api will reject to prevent potentially destructive operations. If this list is empty or not set, no commands will be blocked, and all types of queries will be permitted.
+
 3. **Install Packages**
    ```bash
    pip install -r requirements.txt
@@ -107,16 +111,23 @@ The DuckDB Data Proxy supports a range of filter operators for querying data, al
 
 These operators can be used in query parameters to filter the data retrieved from the database. For example, `?name.like=%john%` would filter records where the `name` field contains "john".
 
+It would be more organized to place `execute/sql` in the "Additional Endpoints" section if it serves a different or more specific purpose than the standard CRUD operations. It's common to separate utility or administrative endpoints from the main CRUD operations to clarify their use cases. Here's how you could mention it:
+
+```markdown
 ## Additional Endpoints
 
 In addition to the core RESTful routes, the DuckDB Data Proxy provides several utility endpoints for diagnostics, metadata, and system health checks:
 
-| Method | Route                  | Description                                        | Query Parameter Examples |
-|--------|------------------------|----------------------------------------------------|--------------------------|
-| GET    | `/`                    | Root endpoint returning a welcome message.        | N/A                      |
-| GET    | `/health`              | Health check endpoint.                             | N/A                      |
-| GET    | `/debug/connection`    | Tests database connection.                         | N/A                      |
-| GET    | `/metadata/tables`     | Lists all tables in the database.                 | N/A                      |
+| Method | Route                  | Description                                                   | Query Parameter Examples |
+|--------|------------------------|---------------------------------------------------------------|--------------------------|
+| GET    | `/`                    | Root endpoint returning a welcome message.                   | N/A                      |
+| GET    | `/health`              | Health check endpoint.                                        | N/A                      |
+| GET    | `/debug/connection`    | Tests database connection.                                    | N/A                      |
+| GET    | `/metadata/tables`     | Lists all tables in the database.                            | N/A                      |
+| POST   | `/execute/sql`         | Execute a custom SQL query (SELECT or DDL statement).        | N/A                      |
+
+The `POST /execute/sql` endpoint is for advanced users who need to execute custom SQL queries or DDL statements that are not covered by the standard CRUD operations. Please use this endpoint with caution, as improper use can affect database integrity and security.
+```
 
 ## Playground
 Interact with the following tables from **tickit** db: `sale`, `event`, `data`, `category`, `user`, `listing`, `venue`
