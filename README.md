@@ -118,6 +118,20 @@ In addition to the core RESTful routes, the DuckDB Data Proxy provides several u
 | GET    | `/debug/connection`    | Tests database connection.                         | N/A                      |
 | GET    | `/metadata/tables`     | Lists all tables in the database.                 | N/A                      |
 
+## Playground
+Interact with the following tables from **tickit** db: `sale`, `event`, `data`, `category`, `user`, `listing`, `venue`
+
+### User Table API Endpoints
+
+```plaintext
+GET     https://duckdb-data-api.vercel.app/user?state.eq=NL&liketheatre=true&limit=10&offset=5&order=firstname%20asc    - List, filter, sort and paginate users
+POST    https://duckdb-data-api.vercel.app/user                                                                         - Create a new user
+GET     https://duckdb-data-api.vercel.app/user/{id}                                                                    - Get a single user by ID
+PUT     https://duckdb-data-api.vercel.app/user/{id}                                                                    - Replace a user by ID (full update)
+PATCH   https://duckdb-data-api.vercel.app/user/{id}                                                                    - Update a user by ID (partial update)
+DELETE  https://duckdb-data-api.vercel.app/user/{id}                                                                    - Delete a user by ID
+```
+
 ## Heads Up on Limitations
 
 - **Performance Considerations**: Because of the way we jump from the edge to MotherDuck and back, and how we fetch data, especially when counting items for pagination, there might be a slight delay.
