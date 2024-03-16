@@ -11,11 +11,12 @@ Description: This FastAPI application serves as a data proxy to DuckDB, offering
 
 from fastapi import FastAPI, Depends, HTTPException, Request, Query, Path, Body
 from fastapi.encoders import jsonable_encoder
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
-from fastapi.responses import JSONResponse
 from datetime import datetime
 import os
 from dotenv import load_dotenv
@@ -44,6 +45,14 @@ def get_db():
         yield db
     finally:
         db.close()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 @app.get("/")
 async def root():
