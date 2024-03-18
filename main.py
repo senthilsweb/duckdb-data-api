@@ -13,6 +13,9 @@ from fastapi import FastAPI, Depends, HTTPException, Request, Query, Path, Body
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import sqlglot
+from sqlglot import parse_one, exp
+from sqlglot.optimizer import optimize
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Dict, Any
@@ -370,3 +373,104 @@ def execute_ddl_query(query: str, db: Session):
     except Exception as e:
         db.rollback()  # Rollback the transaction in case of failure
         raise HTTPException(status_code=400, detail=str(e))
+    
+@app.post("/sqlglot/transpile")
+async def sqlglot_transpile_sql(request: Request):
+    try:
+        # Parse JSON dynamically without a Pydantic model
+        body = await request.json()
+        sql = body.get("sql")
+        transpile_to = body.get("transpile_to")
+
+        if not sql:
+            raise ValueError("No SQL provided for transpilation.")
+        if not transpile_to:
+            raise ValueError("No target language provided for transpilation.")
+
+        # Transpile the provided SQL to the specified target language
+        transpiled_sql = sqlglot.transpile(sql, write=transpile_to, identify=True, pretty=True)[0]
+        return {"result_sql": transpiled_sql}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while transpiling: {e}")
+
+@app.post("/sqlglot/prettify")
+async def sqlglot_prettify_sql(request: Request):
+    try:
+        # Parse JSON dynamically without a Pydantic model
+        body = await request.json()
+        sql = body.get("sql")
+
+        if not sql:
+            raise ValueError("No SQL provided for prettify.")
+
+        # Transpile the provided SQL to the specified target language
+        prettified_sql = sqlglot.optimizer.optimize(sql).sql(pretty=True)
+        return {"result_sql": prettified_sql}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while prettify: {e}")
+    
+@app.post("/sqlglot/extract/column")
+async def sqlglot_extract_columns(request: Request):
+    try:
+        body = await request.json()
+        sql = body.get("sql")
+
+        if not sql:
+            raise ValueError("No SQL provided.")
+
+        parsed_sql = parse_one(sql)
+
+        # Extract columns
+        columns = [column.alias_or_name for column in parsed_sql.find_all(exp.Column)]
+
+        return {"data": columns}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while extracting columns: {e}")
+
+@app.post("/sqlglot/extract/table")
+async def sqlglot_extract_tables(request: Request):
+    try:
+        body = await request.json()
+        sql = body.get("sql")
+
+        if not sql:
+            raise ValueError("No SQL provided.")
+
+        parsed_sql = parse_one(sql)
+
+        # Extract tables
+        tables = [table.name for table in parsed_sql.find_all(exp.Table)]
+
+        return {"data": tables}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while extracting tables: {e}")
+
+@app.post("/sqlglot/extract/projection")
+async def sqlglot_extract_projections(request: Request):
+    try:
+        body = await request.json()
+        sql = body.get("sql")
+
+        if not sql:
+            raise ValueError("No SQL provided.")
+
+        parsed_sql = parse_one(sql)
+
+        # Extract projections
+        projections = []
+        for select in parsed_sql.find_all(exp.Select):
+            projections.extend([projection.alias_or_name for projection in select.expressions])
+
+        return {"data": projections}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"An error occurred while extracting projections: {e}")
