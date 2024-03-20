@@ -30,8 +30,9 @@ load_dotenv()
 os.environ['HOME'] = '/tmp'
 
 # Configuration variables
-DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")
-SCHEMA_NAME = os.getenv("DUCKDB_SCHEMA_NAME", default="main")
+DATABASE_URL = os.getenv("CONSTR", default="duckdb:///tickit.duckdb")
+print(f"DATABASE_URL = [${DATABASE_URL}]")
+SCHEMA_NAME = os.getenv("SCHEMA_NAME", default="main")
 BLACKLIST_KEYWORDS = [keyword for keyword in os.getenv("QUERY_BLACKLIST", "").split(",") if keyword]
 
 
@@ -344,11 +345,12 @@ def execute_custom_query(query: str = Body(..., embed=True), db: Session = Depen
     If the query is a SELECT statement, returns the fetched data.
     For DDL statements, returns a confirmation message.
     """
-    query = query.strip().lower()
+    #query = query.strip().lower()
+    query = query.strip()
     if is_query_blacklisted(query):
         raise HTTPException(status_code=403, detail="The query contains prohibited keywords.")
 
-    if query.startswith("select"):
+    if query.startswith("select") or query.startswith("SELECT"):
         # It's a select query
         return execute_select_query(query, db)
     else:
@@ -356,6 +358,9 @@ def execute_custom_query(query: str = Body(..., embed=True), db: Session = Depen
         return execute_ddl_query(query, db)
 
 def execute_select_query(query: str, db: Session):
+
+    print(query)
+
     try:
         result_proxy = db.execute(text(query))
         results = result_proxy.mappings().all()  # Convert to list of dictionaries
