@@ -25,12 +25,18 @@ import os
 from dotenv import load_dotenv
 import math
 
+# Clear all environment variables
+os.environ.clear()
+
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
 load_dotenv()
+
 os.environ['HOME'] = '/tmp'
+# Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
+load_dotenv()
 
 # Configuration variables
-DATABASE_URL = os.getenv("CONSTR", default="duckdb:///tickit.duckdb")
+DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")
 print(f"DATABASE_URL = [${DATABASE_URL}]")
 SCHEMA_NAME = os.getenv("SCHEMA_NAME", default="main")
 BLACKLIST_KEYWORDS = [keyword for keyword in os.getenv("QUERY_BLACKLIST", "").split(",") if keyword]
