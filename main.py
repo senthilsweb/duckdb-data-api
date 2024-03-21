@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 import math
 
 # Clear all environment variables
-os.environ.clear()
+#os.environ.clear()
 
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
 load_dotenv()
