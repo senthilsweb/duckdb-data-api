@@ -21,12 +21,13 @@ from sqlalchemy.orm import sessionmaker, Session
 from typing import List, Dict, Any
 from pydantic import BaseModel
 from datetime import datetime
+from cache_middleware import CacheMiddleware
 import os
 from dotenv import load_dotenv
 import math
 
 # Clear all environment variables
-#os.environ.clear()
+os.environ.clear()
 
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
 load_dotenv()
@@ -37,8 +38,9 @@ load_dotenv()
 
 # Configuration variables
 DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")
-print(f"DATABASE_URL = [${DATABASE_URL}]")
-SCHEMA_NAME = os.getenv("SCHEMA_NAME", default="main")
+print(f"DATABASE_URL = [{DATABASE_URL}]")
+SCHEMA_NAME = os.getenv("DUCKDB_SCHEMA_NAME", default="main")
+print(f"SCHEMA_NAME = [{SCHEMA_NAME}]")
 BLACKLIST_KEYWORDS = [keyword for keyword in os.getenv("QUERY_BLACKLIST", "").split(",") if keyword]
 
 
@@ -47,6 +49,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 app = FastAPI()
+app.add_middleware(CacheMiddleware)
 
 # Dependency to get the database session
 def get_db():
