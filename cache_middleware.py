@@ -15,7 +15,14 @@ storage under the hobby plan.
 Cache keys are consistently lowercased and prefixed with 'duckdb-data-api:' to ensure
 uniformity and to avoid case-sensitive cache misses. Only GET requests and a specific POST
 request for executing SQL are cached.
+
+For the POST method specific to the "/execute/sql" route, the caching strategy involves generating
+a unique cache key based on the content of the request body. This is achieved by computing an MD5 checksum
+of the POST body, ensuring that different contents produce different cache keys, thereby accurately
+caching responses based on the actual query being executed. This method addresses the challenge of caching
+dynamic content that could vary significantly with each request.
 """
+
 
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
