@@ -26,15 +26,20 @@ import os
 from dotenv import load_dotenv
 import math
 
-# Clear all environment variables
-#os.environ.clear()
+
 
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
-load_dotenv()
+# Only load .env file if running locally and not in Vercel
+if os.environ.get('VERCEL', None) != '1':
+    # Clear all environment variables
+    os.environ.clear()
+    load_dotenv()
 
 os.environ['HOME'] = '/tmp'
 # Initialize environment variables and set HOME for duckDB compatibility in serverless environments.
-load_dotenv()
+# Only load .env file if running locally and not in Vercel
+if os.environ.get('VERCEL', None) != '1':
+    load_dotenv()
 
 # Configuration variables
 DATABASE_URL = os.getenv("DUCKDB_DATABASE_URL", default="duckdb:///tickit.duckdb")

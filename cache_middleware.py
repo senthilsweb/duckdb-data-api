@@ -21,6 +21,7 @@ from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from upstash_redis.asyncio import Redis
+import hashlib
 
 # Load environment variables
 from dotenv import load_dotenv
@@ -32,40 +33,45 @@ redis = Redis.from_env()
 class CacheMiddleware(BaseHTTPMiddleware):
     """
     Middleware to cache GET and specific POST request responses using Upstash Redis.
+    Generates unique cache keys based on the request method, path, query parameters, and
+    for POST requests, the content of the request body.
     """
     
     async def dispatch(self, request: Request, call_next):
         """
         Process an incoming request by checking if it's cached. If not, call the next
         request handler and cache the response if applicable.
-        
-        Args:
-            request: The incoming HTTP request.
-            call_next: The next request handler to call if the cache misses.
-
-        Returns:
-            The cached response or the response from the next request handler.
         """
+        # Construct the base cache key from the method and path
+        base_key = f"{request.method}-{request.url.path}"
         
-        # Apply caching only for GET requests or the specific POST method
-        if request.method == "GET" or (request.method == "POST" and request.url.path == "/execute/sql"):
-            # Normalize and construct the cache key
-            cache_key = f"duckdb-data-api:{request.method.lower()}-{request.url.path.lower()}?{request.query_params}".lower()
+        # Special handling for POST to "/execute/sql"
+        if request.method == "POST" and request.url.path == "/execute/sql":
+            # Read and then reset the request body for hashing and processing
+            body = await request.body()
+            request._body = body  # Reset body after reading
             
-            # Attempt to retrieve the cached response
+            # Create a checksum of the body to use in the cache key
+            checksum = hashlib.md5(body).hexdigest()
+            cache_key = f"duckdb-data-api:{base_key}?{checksum}".lower()
+        elif request.method == "GET":
+            # Use query parameters to distinguish GET requests
+            cache_key = f"duckdb-data-api:{base_key}?{request.query_params}".lower()
+        else:
+            cache_key = None
+
+        # Try to retrieve the cached response
+        if cache_key:
             cached_response = await redis.get(cache_key)
             if cached_response:
                 print(f"Cache hit for key: {cache_key}")
                 return Response(content=cached_response, status_code=200, media_type='application/json')
             print(f"Cache miss for key: {cache_key}")
-        else:
-            # For non-cachable methods, bypass the cache and proceed with the request
-            cache_key = None
 
-        # Process the request
+        # Proceed with the actual request handling if no cache is found
         response = await call_next(request)
 
-        # Cache the response if the status code is 200
+        # Cache the response if the status code is 200 and we have a cache key
         if response.status_code == 200 and cache_key:
             body = b''.join([chunk async for chunk in response.body_iterator])
             cache_content = body.decode()
