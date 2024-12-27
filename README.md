@@ -113,7 +113,7 @@ These operators can be used in query parameters to filter the data retrieved fro
 
 It would be more organized to place `execute/sql` in the "Additional Endpoints" section if it serves a different or more specific purpose than the standard CRUD operations. It's common to separate utility or administrative endpoints from the main CRUD operations to clarify their use cases. Here's how you could mention it:
 
-```markdown
+
 ## Additional Endpoints
 
 In addition to the core RESTful routes, the DuckDB Data Proxy provides several utility endpoints for diagnostics, metadata, and system health checks:
@@ -123,11 +123,48 @@ In addition to the core RESTful routes, the DuckDB Data Proxy provides several u
 | GET    | `/`                    | Root endpoint returning a welcome message.                   | N/A                      |
 | GET    | `/health`              | Health check endpoint.                                        | N/A                      |
 | GET    | `/debug/connection`    | Tests database connection.                                    | N/A                      |
-| GET    | `/metadata/tables`     | Lists all tables in the database.                            | N/A                      |
 | POST   | `/execute/sql`         | Execute a custom SQL query (SELECT or DDL statement).        | N/A                      |
 
 The `POST /execute/sql` endpoint is for advanced users who need to execute custom SQL queries or DDL statements that are not covered by the standard CRUD operations. Please use this endpoint with caution, as improper use can affect database integrity and security.
-```
+
+
+### Complete Documentation for Metadata and Profiler Endpoints
+
+---
+
+### Metadata Endpoints
+
+| Method | Route                      | Description                                   |
+|--------|----------------------------|-----------------------------------------------|
+| GET    | `/metadata/databases`      | Lists all databases in the current instance. |
+| GET    | `/metadata/schemas`        | Lists all schemas in the current database.   |
+| GET    | `/metadata/tables`         | Lists all tables in the current schema.      |
+| GET    | `/metadata/columns`        | Lists all columns in the current schema.     |
+| GET    | `/metadata/views`          | Lists all views in the current schema.       |
+| GET    | `/metadata/constraints`    | Lists all constraints in the current schema. |
+
+---
+
+### `/metadata/{path:path}` Combinations
+
+| Path Format                     | Description                                                       |
+|---------------------------------|-------------------------------------------------------------------|
+| `/metadata/{database}`          | Lists all schemas in the specified database.                     |
+| `/metadata/{database}/{schema}` | Lists all tables in the specified schema of a database.          |
+| `/metadata/{database}/{schema}/{table}` | Lists all columns in the specified table of a schema.            |
+| `/metadata/{database}/{schema}/{table}/{column}` | Fetches metadata for the specific column in the specified table. |
+
+---
+
+### Table Info and Column Profiler Endpoints
+
+| Method | Route                                    | Description                                                   |
+|--------|------------------------------------------|---------------------------------------------------------------|
+| GET    | `/metadata/{catalog}/{schema}/{table}/summarize` | Fetch statistical summaries for all columns in the table.      |
+| GET    | `/metadata/{catalog}/{schema}/{table}/column/{column}/summarize` | Fetch statistical summaries for a specific column in a table. |
+| GET    | `/profile`                               | Profiles a table or a specific column. Use `object=db.schema.table` or `object=db.schema.table.column`. |
+| GET    | `/describe`         | Fetches metadata for a specific object using `object=db.schema.table`. |
+---
 
 ## Playground
 Interact with the following tables from **tickit** db: `sale`, `event`, `data`, `category`, `user`, `listing`, `venue`

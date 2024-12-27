@@ -25,6 +25,8 @@ from cache_middleware import CacheMiddleware
 import os
 from dotenv import load_dotenv
 import math
+from decimal import Decimal
+from sqlalchemy.sql import text
 
 
 
@@ -54,7 +56,7 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 app = FastAPI()
-app.add_middleware(CacheMiddleware)
+#app.add_middleware(CacheMiddleware)
 
 # Dependency to get the database session
 def get_db():
@@ -95,20 +97,7 @@ def debug_connection(db: Session = Depends(get_db)):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
-@app.get("/metadata/tables")
-def list_tables(db: Session = Depends(get_db)) -> List[str]:
-    """
-    Endpoint to list all tables in the database for specified schemas.
-    """
-    if SCHEMA_NAME:
-        query = f"SELECT table_name FROM information_schema.tables WHERE table_schema IN ('{SCHEMA_NAME}')"
-    else:
-        # If no schema names are provided, query tables without filtering by schema
-        query = "SELECT table_name FROM information_schema.tables"
-    print(f"query = [{query}]")
-    result = db.execute(text(query))
-    tables = [row[0] for row in result]
-    return tables
+
 
 def prepare_where_clauses(request: Request):
     """
@@ -146,7 +135,7 @@ def prepare_where_clauses(request: Request):
             params[key] = value
     return " AND ".join(where_clauses), params
 
-@app.get("/{table_name}", response_model=List[Dict[str, Any]])
+@app.get("/entity/{table_name}", response_model=List[Dict[str, Any]])
 def get_entities(table_name: str, request: Request, select: str = Query("*"),
                     order: str = Query(None), skip: int = Query(0, alias="offset"),
                     limit: int = Query(100), db: Session = Depends(get_db)):
@@ -196,7 +185,7 @@ def get_entities(table_name: str, request: Request, select: str = Query("*"),
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/{table_name}/{id}", response_model=Dict[str, Any])
+@app.get("/entity/{table_name}/{id}", response_model=Dict[str, Any])
 def get_entity(table_name: str, id: int = Path(..., description="The ID of the entity to retrieve"), 
                db: Session = Depends(get_db)):
     """
@@ -224,7 +213,7 @@ def get_entity(table_name: str, id: int = Path(..., description="The ID of the e
     # Serialize using jsonable_encoder to handle datetime and other complex types
     return jsonable_encoder(result_dict)
 
-@app.delete("/{table_name}/{id}", response_model=Dict[str, Any])
+@app.delete("/entity/{table_name}/{id}", response_model=Dict[str, Any])
 def delete_entity(table_name: str, id: int = Path(..., description="The ID of the entity to delete"), 
                   db: Session = Depends(get_db)):
     """
@@ -248,7 +237,7 @@ def delete_entity(table_name: str, id: int = Path(..., description="The ID of th
 
     return {"message": f"Record [{id}] deleted successfully from [{SCHEMA_NAME}.{table_name}]"}
 
-@app.post("/{table_name}", response_model=Dict[str, Any])
+@app.post("/entity/{table_name}", response_model=Dict[str, Any])
 def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...), 
                   db: Session = Depends(get_db)):
     """
@@ -276,7 +265,7 @@ def create_entity(table_name: str, entity_data: Dict[str, Any] = Body(...),
     # Serialize using jsonable_encoder to handle datetime and other complex types
     return jsonable_encoder(result_dict)
 
-@app.patch("/{table_name}/{id}", response_model=Dict[str, Any])
+@app.patch("/entity/{table_name}/{id}", response_model=Dict[str, Any])
 def update_entity(table_name: str, id: int, update_data: Dict[str, Any] = Body(...), 
                   db: Session = Depends(get_db)):
     """
@@ -307,7 +296,7 @@ def update_entity(table_name: str, id: int, update_data: Dict[str, Any] = Body(.
     updated_entity = {column: value for column, value in result._mapping.items()}
     return updated_entity
 
-@app.put("/{table_name}/{id}", response_model=Dict[str, Any])
+@app.put("/entity/{table_name}/{id}", response_model=Dict[str, Any])
 def replace_entity(table_name: str, id: int, new_data: Dict[str, Any] = Body(...), 
                    db: Session = Depends(get_db)):
   
@@ -370,6 +359,184 @@ def execute_custom_query(query: str = Body(..., embed=True), db: Session = Depen
     else:
         # It's a DDL query
         return execute_ddl_query(query, db)
+    
+
+@app.get("/metadata/databases", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_databases", db)
+
+@app.get("/metadata/schemas", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_schemas", db)
+
+@app.get("/metadata/tables", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_columns", db)
+
+@app.get("/metadata/columns", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_columns", db)
+
+@app.get("/metadata/views", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_views", db)
+
+@app.get("/metadata/constraints", response_model=List[Dict[str, Any]])
+def get_md_duckdb_databases(db: Session = Depends(get_db)):
+    return execute_metadata_query("SELECT * FROM duckdb_constraints", db)
+
+@app.get("/metadata/{path:path}", response_model=List[Dict[str, Any]])
+def handle_metadata_routes(path: str, db: Session = Depends(get_db)):
+    """
+    Handles metadata routes dynamically for DuckDB catalogs, schemas, tables, and columns.
+    Retrieves all available fields from the information schema.
+    """
+    parts = path.split("/")  # Split the path into components
+
+    if len(parts) == 1:  # Matches /metadata/{catalog}
+        catalog = parts[0]
+        query = f"""
+            SELECT *
+            FROM information_schema.schemata
+            WHERE catalog_name = '{catalog}';
+        """
+
+    elif len(parts) == 2:  # Matches /metadata/{catalog}/{schema}
+        catalog, schema = parts
+        query = f"""
+            SELECT *
+            FROM information_schema.tables
+            WHERE table_catalog = '{catalog}' AND table_schema = '{schema}';
+        """
+
+    elif len(parts) == 3:  # Matches /metadata/{catalog}/{schema}/{table}
+        catalog, schema, table = parts
+        query = f"""
+            SELECT *
+            FROM information_schema.columns
+            WHERE table_catalog = '{catalog}' AND table_schema = '{schema}' AND table_name = '{table}';
+        """
+
+    elif len(parts) == 4:  # Matches /metadata/{catalog}/{schema}/{table}/{column}
+        catalog, schema, table, column = parts
+        query = f"""
+            SELECT *
+            FROM information_schema.columns
+            WHERE table_catalog = '{catalog}' AND table_schema = '{schema}' AND table_name = '{table}' AND column_name = '{column}';
+        """
+
+    else:
+        # Return a 400 error if the path format is invalid
+        raise HTTPException(status_code=400, detail="Invalid route format. Check the number of parts.")
+
+    # Execute the query and return results
+    return execute_metadata_query(query, db)
+
+@app.get("/describe", response_model=List[Dict[str, Any]])
+def describe_object(object: str = Query(..., description="The object to describe, in the format 'db.schema.table'"),
+                    db: Session = Depends(get_db)):
+    """
+    Fetches metadata for the specified object (table).
+    Query parameter format: 'db.schema.table'.
+    """
+    # Split the object into components
+    try:
+        catalog, schema, table = object.split(".")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid object format. Use 'db.schema.table'.")
+
+    # Construct the query
+    query = f"DESCRIBE TABLE {catalog}.{schema}.{table}"
+    
+    # Execute and return the result
+    return execute_metadata_query(query, db)
+
+
+@app.get("/profile", response_model=List[Dict[str, Any]])
+def profile_object(object: str = Query(..., description="The object to profile, in the format 'db.schema.table' or 'db.schema.table.column'"),
+                   db: Session = Depends(get_db)):
+    """
+    Fetches profile metadata for the specified object.
+    Query parameter format: 'db.schema.table' (for table) or 'db.schema.table.column' (for specific column).
+    """
+    parts = object.split(".")
+    if len(parts) == 3:
+        # Table-level profile
+        catalog, schema, table = parts
+        query = f"SUMMARIZE TABLE {catalog}.{schema}.{table}"
+        return execute_profile_query(query, db)
+    elif len(parts) == 4:
+        # Column-level profile
+        catalog, schema, table, column = parts
+        query = f"SUMMARIZE TABLE {catalog}.{schema}.{table}"
+        all_columns = execute_profile_query(query, db)
+        
+        # Filter for the specific column
+        column_summary = [col for col in all_columns if col["column_name"] == column]
+        if not column_summary:
+            raise HTTPException(status_code=404, detail=f"Column '{column}' not found in table '{table}'.")
+        return column_summary
+    else:
+        raise HTTPException(status_code=400, detail="Invalid object format. Use 'db.schema.table' or 'db.schema.table.column'.")
+
+
+def execute_profile_query(query: str, db: Session) -> List[Dict[str, Any]]:
+    """
+    Executes a profile-specific query (e.g., SUMMARIZE TABLE) and handles Decimal objects for JSON serialization.
+    """
+    try:
+        # Use SQLAlchemy's text() to wrap raw SQL queries
+        result_proxy = db.execute(text(query))
+        results = result_proxy.fetchall()
+
+        # Convert results to JSON-serializable format
+        serialized_results = []
+        for row in results:
+            serialized_row = {}
+            for key, value in zip(result_proxy.keys(), row):
+                # Handle Decimal conversion for SUMMARIZE TABLE results
+                if isinstance(value, Decimal):
+                    serialized_row[key] = float(value)
+                else:
+                    serialized_row[key] = value
+            serialized_results.append(serialized_row)
+        
+        return serialized_results
+    except Exception as e:
+        # Log and raise an HTTP exception for errors
+        raise HTTPException(status_code=500, detail=f"Error executing profile query: {str(e)}")
+
+def execute_metadata_query(query: str, db: Session) -> List[Dict[str, Any]]:
+    """
+    Executes a metadata query and formats the results.
+
+    Parameters:
+    - query: str - The SQL query to execute.
+    - db: Session - The database session to use for query execution.
+
+    Returns:
+    - A list of dictionaries where each dictionary represents a row of query results.
+    """
+    print(query)  # Log the query for debugging purposes
+    try:
+        # Execute the query using the database session
+        result_proxy = db.execute(text(query))
+        results = result_proxy.fetchall()
+
+        # Convert query results into a structured format
+        response_data = {
+            "data": [
+                {key: (value.isoformat() if isinstance(value, datetime) else value)
+                 for key, value in dict(zip(result_proxy.keys(), row)).items()}
+                for row in results
+            ]
+        }
+        # Return the formatted response data as JSON
+        return JSONResponse(content=response_data)
+    except Exception as e:
+        # Handle any exceptions that occur during query execution
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 def execute_select_query(query: str, db: Session):
 
